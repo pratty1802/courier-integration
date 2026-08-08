@@ -31,6 +31,14 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
   app.use(requestIdMiddleware);
 
+  app.get('/', (_req, res) => {
+    res.status(200).json({
+      service: 'courier-integration',
+      health: '/health',
+      api: '/api/v1',
+    });
+  });
+
   app.get('/health', (_req, res) => {
     res.status(200).json({
       status: 'ok',

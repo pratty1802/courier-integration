@@ -84,7 +84,7 @@ npx prisma migrate deploy
 npm run dev
 ```
 
-- API: `http://localhost:3000`
+- API: `http://localhost:3000` (public index; no auth)
 - Health (no auth): `http://localhost:3000/health`
 
 Expected health payload includes `bulk_mode` and `supported_couriers` (`mock`, `urbanebolt`, `delhivery`).
@@ -187,6 +187,7 @@ All `/api/v1/*` require `X-API-Key` (or `Authorization: Bearer`). `/health` is p
 
 | Method | Path | Notes |
 |--------|------|-------|
+| GET | `/` | Public; service index (`health`, `api`) |
 | GET | `/health` | Public; `bulk_mode`, couriers, circuits |
 | POST | `/api/v1/orders` | Create shipment |
 | GET | `/api/v1/orders/:orderId/track` | Track + persist history |
