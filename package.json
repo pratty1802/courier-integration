@@ -21,6 +21,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.10",
     "axios": "^1.8.4",
     "bullmq": "^5.44.0",
     "cors": "^2.8.5",
@@ -31,20 +34,17 @@
     "ioredis": "^5.6.0",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
+    "prisma": "^6.5.0",
     "rate-limit-redis": "^4.2.0",
+    "typescript": "^5.8.2",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.13.10",
     "@typescript-eslint/eslint-plugin": "^8.26.1",
     "@typescript-eslint/parser": "^8.26.1",
     "eslint": "^9.22.0",
     "pino-pretty": "^13.0.0",
-    "prisma": "^6.5.0",
-    "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "tsx": "^4.19.3"
   }
 }

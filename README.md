@@ -260,7 +260,7 @@ Confirm `.env` is **not** in the commit (`git ls-files | grep .env` should only 
 
 - Free web services **spin down** after ~15 minutes idle; first request can take ~1 minute.
 - Free Postgres **expires after 30 days**.
-- Build: `npm ci && npx prisma generate && npm run build`
+- Build: `npm ci --include=dev && npx prisma generate && npm run build` (`NODE_ENV=production` would otherwise skip TypeScript/`@types/*`/`prisma`)
 - Start: `npx prisma migrate deploy && node dist/server.js` (free tier has no pre-deploy command)
 - Health check path: `/health`
 - `autoDeploy: true` on branch `main` — later pushes redeploy automatically.
