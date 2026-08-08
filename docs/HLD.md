@@ -43,7 +43,7 @@ Layered view:
 └──────────────────────────┘
 ```
 
-**Design A (poll bulk)** — Batch Service includes a poll processor; `GET /batches/:id` advances work.
+**Design A (poll bulk)** — Batch Service starts in-process shipping on create (no Redis); `GET /batches/:id` is read-only.
 
 **Design B (worker bulk)** — Job producer enqueues work; Background Worker + Queue sit between Batch Service and Adapters; `GET /batches/:id` is read-only.
 
@@ -208,11 +208,11 @@ Shared entry:
 3. Creates a batch record + pending items; returns `batch_id` immediately.
 4. Client polls batch status until complete; response shows per-order success/failure.
 
-**Mode A — Poll-driven (default on free hosting)**  
-Each status poll may claim a small set of pending items, process them concurrently via partner plugins, then return updated batch state. Processing advances as the client polls.
+**Mode A — Poll / in-process (default on free hosting)**  
+On bulk submit, the same web process starts shipping immediately (waves of `BULK_CONCURRENCY`). Status GET is read-only.
 
 **Mode B — Worker-driven (default locally)**  
-On bulk submit, work is queued. A background worker processes items concurrently. Batch status poll is read-only (does not drive processing).
+On bulk submit, work is queued. A background worker processes items concurrently. Status GET is read-only.
 
 Both modes:
 - Partial success (e.g. 95 ok / 5 failed with reasons)
@@ -224,11 +224,12 @@ Client                 Platform                      Partners
   │                       │                             │
   │ POST /orders/bulk     │                             │
   │──────────────────────►│ validate, save batch        │
-  │◄──── batch_id ────────│                             │
+  │                       │── create shipments ────────►│
+  │◄──── batch_id ────────│◄────────────────────────────│
   │                       │                             │
-  │ GET /batches/:id      │  (poll mode: process some)  │
-  │──────────────────────►│── create shipments ────────►│
-  │◄──── progress ────────│◄────────────────────────────│
+  │ GET /batches/:id      │  (read-only status)         │
+  │──────────────────────►│                             │
+  │◄──── progress ────────│                             │
   │         …             │                             │
   │ GET /batches/:id      │                             │
   │──────────────────────►│                             │
@@ -245,7 +246,7 @@ Client                 Platform                      Partners
 | Unique `order_id` | Store enforces uniqueness |
 | Duplicate create | Do not create a second shipment; return existing order/AWB |
 | Duplicate in bulk | Item marked as already created / success with existing reference |
-| Concurrent bulk polls | Claim pending → processing before work so two polls do not double-ship |
+| Concurrent bulk waves | Claim pending → processing before work so two waves do not double-ship |
 
 Idempotency key for create is the caller’s `order_id`.
 

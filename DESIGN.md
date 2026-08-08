@@ -85,16 +85,16 @@ Normalized statuses: `CREATED | PICKED_UP | IN_TRANSIT | DELIVERED | CANCELLED |
 | | Design A — `BULK_MODE=poll` | Design B — `BULK_MODE=worker` |
 |--|------------------------------|-------------------------------|
 | Default | **Render** | **Local** |
-| `POST /orders/bulk` | Persist PENDING → return `batch_id` | Persist + enqueue → return `batch_id` |
-| `GET /batches/:id` | Claims ≤10 items and processes | Read-only status |
+| `POST /orders/bulk` | Persist + start in-process shipping → `batch_id` | Persist + enqueue Redis → `batch_id` |
+| `GET /batches/:id` | Read-only status | Read-only status |
 | Infra | Web + Postgres | Web + Redis + worker |
 | Cost on Render | ~$0 | ~$17–$30/mo if fully paid |
 
-**Why poll on free Render:** free web services spin down; dedicated background workers are not free. Poll-driven work survives that constraint and still meets “don’t process 100 sequentially in one HTTP request” via bounded concurrency per poll.
+**Why poll on free Render:** no Redis / paid worker. Shipping still starts at create (same Node process, waves of `BULK_CONCURRENCY`). `GET` never ships. If the free instance spins down mid-batch, remaining items stay `PENDING` until the process is up again and a new bulk is not required — restart the API or re-deploy; in-flight work is not resumed by status reads.
 
-**Why worker locally:** Redis in Docker + BullMQ gives true async and a production-shaped path without paying for Render workers during development.
+**Why worker locally:** Redis + BullMQ survives process restarts for queued jobs and matches a paid production worker.
 
-**Idempotency:** unique `order_id`; duplicates return existing shipment. Concurrent polls use claim (`PENDING` → `PROCESSING`) so the same item is not double-shipped.
+**Idempotency:** unique `order_id`; duplicates return existing shipment. Claim (`PENDING` → `PROCESSING`) so two waves do not double-ship.
 
 **Upgrade path:** set `BULK_MODE=worker`, provide `REDIS_URL`, run a worker process — same API, schema, and adapters.
 

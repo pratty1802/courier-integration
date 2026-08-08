@@ -32,6 +32,13 @@ export class BatchService {
           batchItemId: item.id,
         })),
       );
+    } else {
+      void this.processEntireBatch(batch.id, requestId).catch((err: unknown) => {
+        logger.error(
+          { err, request_id: requestId, batch_id: batch.id },
+          'In-process bulk run failed',
+        );
+      });
     }
 
     logger.info(
@@ -52,7 +59,7 @@ export class BatchService {
     };
   }
 
-  async getBatch(batchId: string, requestId: string) {
+  async getBatch(batchId: string, _requestId: string) {
     const batch = await prisma.batch.findUnique({
       where: { id: batchId },
       include: { items: true },
@@ -66,37 +73,34 @@ export class BatchService {
       });
     }
 
-    if (env.BULK_MODE === 'poll' && batch.status !== 'COMPLETED') {
-      await this.processPendingItems(batchId, requestId);
-    }
-
-    const refreshed = await prisma.batch.findUnique({
-      where: { id: batchId },
-      include: { items: true },
-    });
-
-    if (!refreshed) {
-      throw new AppError({
-        code: 'NOT_FOUND',
-        message: `Batch not found: ${batchId}`,
-        statusCode: 404,
-      });
-    }
-
     return {
-      batch_id: refreshed.id,
-      status: refreshed.status,
-      total: refreshed.totalCount,
-      success_count: refreshed.successCount,
-      failure_count: refreshed.failureCount,
+      batch_id: batch.id,
+      status: batch.status,
+      total: batch.totalCount,
+      success_count: batch.successCount,
+      failure_count: batch.failureCount,
       bulk_mode: env.BULK_MODE,
-      items: refreshed.items.map((item) => ({
+      items: batch.items.map((item) => ({
         order_id: item.clientOrderId,
         courier_partner: item.courierPartner,
         status: item.status,
         reason: item.reason,
       })),
     };
+  }
+
+  /** Drain all pending items in waves of BULK_CONCURRENCY. Used by poll mode after create. */
+  private async processEntireBatch(batchId: string, requestId: string): Promise<void> {
+    for (;;) {
+      const pending = await prisma.batchItem.count({
+        where: { batchId, status: 'PENDING' },
+      });
+      if (pending === 0) {
+        await this.maybeCompleteBatch(batchId);
+        return;
+      }
+      await this.processPendingItems(batchId, requestId);
+    }
   }
 
   async processPendingItems(batchId: string, requestId: string): Promise<void> {

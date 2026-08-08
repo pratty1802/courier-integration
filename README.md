@@ -159,7 +159,7 @@ UrbaneBolt UAT: prefer consignee pincode `400001` or `110001`; other pins are of
 | `NODE_ENV` | `development` | `production` | Set in `render.yaml` |
 | `PORT` | `3000` | Render injects | Do not hardcode in prod |
 | `BULK_MODE` | `worker` | `poll` | `worker` needs Redis |
-| `BULK_CONCURRENCY` | `10` | `10` | Items claimed per poll / worker concurrency |
+| `BULK_CONCURRENCY` | `10` | `10` | Parallel items per wave (poll) / worker |
 | `DATABASE_URL` | Docker Postgres | From Render DB | Required |
 | `REDIS_URL` | `redis://localhost:6379` | omit | Required only if `BULK_MODE=worker` |
 | `API_KEYS` | `dev-key-local,...` | **secret** | Comma-separated |
@@ -193,13 +193,13 @@ All `/api/v1/*` require `X-API-Key` (or `Authorization: Bearer`). `/health` is p
 | GET | `/api/v1/orders/:orderId/track` | Track + persist history |
 | POST | `/api/v1/orders/:orderId/cancel` | Cancel |
 | POST | `/api/v1/orders/bulk` | Up to 100 orders → `batch_id` (202) |
-| GET | `/api/v1/batches/:batchId` | Poll: processes work; worker: read-only |
+| GET | `/api/v1/batches/:batchId` | Read-only status |
 
 ### Bulk modes
 
 | Mode | `POST /bulk` | `GET /batches/:id` |
 |------|--------------|--------------------|
-| `poll` | Persist PENDING | Claims ≤10 items and processes |
+| `poll` | Persist + start shipping in-process (no Redis) | Read-only status |
 | `worker` | Persist + enqueue Redis | Read-only status |
 
 Switch with `BULK_MODE` only — no code changes.
