@@ -28,7 +28,7 @@ See [DESIGN.md](DESIGN.md) and [docs/HLD.md](docs/HLD.md) for architecture.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-org>/courier-integration.git
+git clone https://github.com/pratty1802/courier-integration.git
 cd courier-integration
 cp .env.example .env
 npm install
