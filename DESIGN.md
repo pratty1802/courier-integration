@@ -74,27 +74,32 @@ Each adapter owns: partner auth/token cache, DTO mapping, retries, status/error 
 FK to order, `status`, `raw_payload`, `recorded_at`  
 
 **batches** / **batch_items**  
-Batch status; per-item partner, status (`PENDING` → `PROCESSING` → success/fail), reason, optional order link  
+Batch status; per-item partner, status (`PENDING` → `PROCESSING` → success/fail/duplicate), reason, optional FK to `orders`  
 
 Normalized statuses: `CREATED | PICKED_UP | IN_TRANSIT | DELIVERED | CANCELLED | FAILED`
+
+**When rows appear:** `POST /orders/bulk` (create) writes `batches` + `batch_items` immediately, then creates `orders` (+ `tracking_events`) as each item is shipped. `GET /batches/:id` (poll/status) only reads; it never inserts orders.
 
 ---
 
 ## 5. Bulk processing — two designs, one config switch
 
+**Rule:** shipments (`orders` rows) are created on the **create call** (`POST /api/v1/orders/bulk`), not on poll (`GET /api/v1/batches/:id`). Status GET is always read-only. The Ops UI 1.5s poll only refreshes the table; it does not drive shipping.
+
 | | Design A — `BULK_MODE=poll` | Design B — `BULK_MODE=worker` |
 |--|------------------------------|-------------------------------|
 | Default | **Render** | **Local** |
-| `POST /orders/bulk` | Persist + start in-process shipping → `batch_id` | Persist + enqueue Redis → `batch_id` |
-| `GET /batches/:id` | Read-only status | Read-only status |
+| `POST /orders/bulk` | Persist batch + **start shipping immediately** (in-process, waves of `BULK_CONCURRENCY`) → return `batch_id` | Persist batch + enqueue Redis → return `batch_id`; worker ships |
+| `GET /batches/:id` | **Read-only** status | **Read-only** status |
+| When `orders` are inserted | During/after create, as each item succeeds | Same, via worker after create enqueue |
 | Infra | Web + Postgres | Web + Redis + worker |
 | Cost on Render | ~$0 | ~$17–$30/mo if fully paid |
 
-**Why poll on free Render:** no Redis / paid worker. Shipping still starts at create (same Node process, waves of `BULK_CONCURRENCY`). `GET` never ships. If the free instance spins down mid-batch, remaining items stay `PENDING` until the process is up again and a new bulk is not required — restart the API or re-deploy; in-flight work is not resumed by status reads.
+**Why `poll` on free Render:** no Redis / paid worker. Name is historical; work still starts at **create**, in the same Node process. `GET` never ships. If the free instance spins down mid-batch, remaining `batch_items` stay `PENDING` — status reads do not resume them.
 
 **Why worker locally:** Redis + BullMQ survives process restarts for queued jobs and matches a paid production worker.
 
-**Idempotency:** unique `order_id`; duplicates return existing shipment. Claim (`PENDING` → `PROCESSING`) so two waves do not double-ship.
+**Idempotency:** unique `order_id` (global, not per batch). Resubmitting the same ids → `DUPLICATE` / existing shipment. Claim (`PENDING` → `PROCESSING`) so two waves do not double-ship.
 
 **Upgrade path:** set `BULK_MODE=worker`, provide `REDIS_URL`, run a worker process — same API, schema, and adapters.
 
@@ -157,7 +162,7 @@ Partner 4xx → `COURIER_ERROR`. Timeouts/5xx → retry with backoff → `COURIE
 
 | Trade-off | Choice | Cost |
 |-----------|--------|------|
-| Free hosting | Poll bulk + free Postgres (30-day) | Cold starts; no always-on worker on Render free |
+| Free hosting | In-process bulk on create + free Postgres (30-day) | Cold starts; no Redis worker; GET does not resume stuck items |
 | Dual bulk modes | Config flag | Slightly more code; clearer local vs prod story |
 | API keys not OAuth | Env allowlist | Fine for internal OMS; rotate via env |
 | In-memory rate limit on free | Simple | Not shared across multiple instances (acceptable on free single instance) |

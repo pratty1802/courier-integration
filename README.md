@@ -4,6 +4,17 @@ Courier-agnostic logistics API (Express + TypeScript + Prisma) with pluggable ad
 
 See [DESIGN.md](DESIGN.md) and [docs/HLD.md](docs/HLD.md) for architecture.
 
+## Production
+
+| | URL |
+|--|-----|
+| API | [https://courier-integration-api.onrender.com](https://courier-integration-api.onrender.com) |
+| Health | [https://courier-integration-api.onrender.com/health](https://courier-integration-api.onrender.com/health) |
+| Ops UI | [https://courier-ops.vercel.app](https://courier-ops.vercel.app) |
+| GitHub | [https://github.com/pratty1802/courier-integration](https://github.com/pratty1802/courier-integration) |
+
+Render free spins down after ~15 minutes idle; first request can take ~1 minute. Ops UI Settings → API key must match Render `API_KEYS`. `CORS_ORIGIN` on Render must include `https://courier-ops.vercel.app`.
+
 ## Features
 
 - Unified API: create / track / cancel / bulk
@@ -242,7 +253,7 @@ Confirm `.env` is **not** in the commit (`git ls-files | grep .env` should only 
    | Key | Example |
    |-----|---------|
    | `API_KEYS` | `prod-key-1,oms-key-1` |
-   | `CORS_ORIGIN` | `https://<your-app>.vercel.app` (placeholder until UI exists, e.g. `*` temporarily not recommended; use `http://localhost:5173` then update) |
+   | `CORS_ORIGIN` | `https://courier-ops.vercel.app` (plus preview origins if needed) |
    | `URBANEBOLT_USERNAME` | UAT username |
    | `URBANEBOLT_PASSWORD` | UAT password |
    | `URBANEBOLT_CUSTOMER_CODE` | e.g. `UEBCUS0008` |
@@ -254,7 +265,7 @@ Confirm `.env` is **not** in the commit (`git ls-files | grep .env` should only 
 7. Check health:
 
    ```bash
-   curl -s https://<render-host>/health | jq
+   curl -s https://courier-integration-api.onrender.com/health | jq
    ```
 
 **Notes**
@@ -283,7 +294,7 @@ Confirm `.env` is **not** in the commit (`git ls-files | grep .env` should only 
 
    | Name | Value |
    |------|--------|
-   | `VITE_API_BASE_URL` | `https://<render-host>` (no trailing slash) |
+   | `VITE_API_BASE_URL` | `https://courier-integration-api.onrender.com` (no trailing slash) |
 
 4. Deploy. Copy the UI URL, e.g. `https://courier-ops.vercel.app`.
 
@@ -293,7 +304,7 @@ Confirm `.env` is **not** in the commit (`git ls-files | grep .env` should only 
 2. Set `CORS_ORIGIN` to the Vercel origin(s), comma-separated:
 
    ```text
-   https://<your-ui>.vercel.app,https://<your-ui>-git-main-<team>.vercel.app
+   https://courier-ops.vercel.app
    ```
 
 3. **Save** (triggers API redeploy).
@@ -302,8 +313,8 @@ Confirm `.env` is **not** in the commit (`git ls-files | grep .env` should only 
 ### E. Post-deploy smoke test
 
 ```bash
-API=https://<render-host>
-KEY=prod-key-1
+API=https://courier-integration-api.onrender.com
+KEY=dev-key-local
 
 curl -s "$API/health" | jq
 
