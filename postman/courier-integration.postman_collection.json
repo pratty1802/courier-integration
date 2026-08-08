@@ -1,0 +1,77 @@
+{
+  "info": {
+    "name": "Courier Integration API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Unified courier-agnostic API"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "apiKey", "value": "dev-key-local" },
+    { "key": "orderId", "value": "ORD-DEMO-001" },
+    { "key": "batchId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-API-Key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"order_id\": \"{{orderId}}\",\n  \"courier_partner\": \"mock\",\n  \"service_type\": \"NDD\",\n  \"shipper\": {\n    \"name\": \"Shipper Co\",\n    \"phone\": \"9876543210\",\n    \"address_line1\": \"Warehouse 1\",\n    \"city\": \"Delhi\",\n    \"state\": \"DL\",\n    \"pincode\": \"110001\",\n    \"country\": \"INDIA\"\n  },\n  \"consignee\": {\n    \"name\": \"Buyer\",\n    \"phone\": \"9123456780\",\n    \"address_line1\": \"Home 12\",\n    \"city\": \"Mumbai\",\n    \"state\": \"MH\",\n    \"pincode\": \"400001\",\n    \"country\": \"INDIA\"\n  },\n  \"parcel\": {\n    \"description\": \"Books\",\n    \"quantity\": 1,\n    \"weight_kg\": 0.5,\n    \"length_cm\": 10,\n    \"breadth_cm\": 10,\n    \"height_cm\": 10,\n    \"pieces\": 1\n  },\n  \"payment\": {\n    \"mode\": \"PREPAID\",\n    \"collectable_value\": 0,\n    \"declared_value\": 100,\n    \"invoice_number\": \"INV-001\",\n    \"invoice_date\": \"2026-03-07\",\n    \"invoice_value\": 100\n  }\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/orders"
+      }
+    },
+    {
+      "name": "Track Order",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/api/v1/orders/{{orderId}}/track"
+      }
+    },
+    {
+      "name": "Cancel Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/api/v1/orders/{{orderId}}/cancel"
+      }
+    },
+    {
+      "name": "Bulk Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-API-Key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orders\": [\n    {\n      \"order_id\": \"ORD-BULK-1\",\n      \"courier_partner\": \"mock\",\n      \"shipper\": {\"name\":\"S\",\"phone\":\"9876543210\",\"address_line1\":\"A\",\"city\":\"Delhi\",\"state\":\"DL\",\"pincode\":\"110001\",\"country\":\"INDIA\"},\n      \"consignee\": {\"name\":\"C1\",\"phone\":\"9123456780\",\"address_line1\":\"B\",\"city\":\"Mumbai\",\"state\":\"MH\",\"pincode\":\"400001\",\"country\":\"INDIA\"},\n      \"parcel\": {\"description\":\"Item\",\"quantity\":1,\"weight_kg\":0.5,\"pieces\":1},\n      \"payment\": {\"mode\":\"PREPAID\",\"collectable_value\":0,\"declared_value\":50}\n    }\n  ]\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/orders/bulk"
+      }
+    },
+    {
+      "name": "Get Batch",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/api/v1/batches/{{batchId}}"
+      }
+    }
+  ]
+}

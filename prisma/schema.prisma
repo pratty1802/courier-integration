@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  FAILED
+}
+
+enum BatchStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BatchItemStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  DUPLICATE
+}
+
+model Order {
+  id                 String         @id @default(uuid())
+  orderId            String         @unique @map("order_id")
+  courierPartner     String         @map("courier_partner")
+  courierShipmentId  String?        @map("courier_shipment_id")
+  awb                String?
+  status             ShipmentStatus @default(CREATED)
+  requestPayload     Json           @map("request_payload")
+  responsePayload    Json?          @map("response_payload")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  trackingEvents TrackingEvent[]
+  batchItems     BatchItem[]
+
+  @@map("orders")
+}
+
+model TrackingEvent {
+  id         String         @id @default(uuid())
+  orderId    String         @map("order_id")
+  status     ShipmentStatus
+  rawPayload Json           @map("raw_payload")
+  recordedAt DateTime       @default(now()) @map("recorded_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("tracking_events")
+}
+
+model Batch {
+  id          String      @id @default(uuid())
+  status      BatchStatus @default(PENDING)
+  totalCount  Int         @map("total_count")
+  successCount Int        @default(0) @map("success_count")
+  failureCount Int        @default(0) @map("failure_count")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  items BatchItem[]
+
+  @@map("batches")
+}
+
+model BatchItem {
+  id              String          @id @default(uuid())
+  batchId         String          @map("batch_id")
+  clientOrderId   String          @map("client_order_id")
+  courierPartner  String          @map("courier_partner")
+  status          BatchItemStatus @default(PENDING)
+  reason          String?
+  orderRefId      String?         @map("order_ref_id")
+  requestPayload  Json            @map("request_payload")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  batch Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderRefId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, status])
+  @@index([clientOrderId])
+  @@map("batch_items")
+}
